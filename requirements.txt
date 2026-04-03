@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+boto3
+python-jose[cryptography]
+pydantic-settings
+python-multipart
+PyJWT[crypto]==2.8.0
+requests==2.31.0
