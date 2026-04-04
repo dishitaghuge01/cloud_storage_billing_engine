@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 224 20% 5%;
+    --foreground: 210 20% 92%;
+
+    --card: 224 18% 8%;
+    --card-foreground: 210 20% 92%;
+
+    --popover: 224 18% 8%;
+    --popover-foreground: 210 20% 92%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 224 14% 14%;
+    --secondary-foreground: 210 20% 85%;
+
+    --muted: 224 14% 14%;
+    --muted-foreground: 215 16% 50%;
+
+    --accent: 224 14% 18%;
+    --accent-foreground: 210 20% 92%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 224 14% 16%;
+    --input: 224 14% 16%;
+    --ring: 217 91% 60%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 224 20% 4%;
+    --sidebar-foreground: 210 20% 75%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 224 14% 12%;
+    --sidebar-accent-foreground: 210 20% 92%;
+    --sidebar-border: 224 14% 12%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Custom tokens */
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --surface: 224 18% 10%;
+    --surface-foreground: 210 20% 85%;
+    --razorpay: 217 100% 55%;
+    --razorpay-foreground: 0 0% 100%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(250 80% 60%));
+    --gradient-surface: linear-gradient(180deg, hsl(224 18% 10%), hsl(224 20% 7%));
+    --shadow-glow: 0 0 40px -10px hsl(217 91% 60% / 0.2);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+  .glow {
+    box-shadow: var(--shadow-glow);
+  }
+}
+
+@keyframes gauge-fill {
+  from { stroke-dashoffset: 283; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.4s ease-out forwards;
+}
