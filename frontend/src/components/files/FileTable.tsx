@@ -29,12 +29,14 @@ function getFileIcon(name: string) {
 export default function FileTable() {
   const queryClient = useQueryClient();
 
-  const { data: files, isLoading } = useQuery<StorageFile[]>({
+  const { data: filesData, isLoading } = useQuery({
     queryKey: ["files"],
     queryFn: async () => {
-      const { data } = await api.get<StorageFile[]>("/files");
-      return data;
+      const { data } = await api.get("/files");
+      // Backend returns { user_id, files: StorageFile[] }
+      return data.files as StorageFile[];
     },
+    staleTime: 30000,
   });
 
   const deleteMutation = useMutation({
@@ -42,20 +44,33 @@ export default function FileTable() {
       await api.delete(`/files/${encodeURIComponent(filename)}`);
     },
     onSuccess: (_, filename) => {
-      toast.success(`${filename} deleted`);
+      toast.success(`${filename} deleted successfully`);
       queryClient.invalidateQueries({ queryKey: ["files"] });
     },
-    onError: () => toast.error("Failed to delete file"),
+    onError: (error) => {
+      const message = error instanceof Error ? error.message : "Failed to delete file";
+      toast.error(message);
+    },
   });
 
   const handleDownload = async (filename: string) => {
     try {
       const { data } = await api.get<DownloadResponse>(`/download/${encodeURIComponent(filename)}`);
-      window.open(data.download_url, "_blank");
-    } catch {
-      toast.error("Failed to generate download link");
+      if (data.download_url) {
+        window.open(data.download_url, "_blank");
+        toast.success(`Downloading ${filename}...`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to generate download link";
+      toast.error(message);
     }
   };
+
+  const handleDelete = (filename: string) => {
+    deleteMutation.mutate(filename);
+  };
+
+  const files = filesData ?? [];
 
   if (isLoading) {
     return (
@@ -67,7 +82,7 @@ export default function FileTable() {
     );
   }
 
-  if (!files?.length) {
+  if (!files.length) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <FileIcon className="h-12 w-12 text-muted-foreground/40" />
@@ -105,24 +120,41 @@ export default function FileTable() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleDownload(file.name)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-primary"
+                      onClick={() => handleDownload(file.name)}
+                      title="Download file"
+                    >
                       <Download className="h-4 w-4" />
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          title="Delete file"
+                        >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete {file.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>This action cannot be undone. The file will be permanently removed.</AlertDialogDescription>
+                          <AlertDialogDescription>
+                            This action cannot be undone. The file will be permanently removed from your vault.
+                          </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteMutation.mutate(file.name)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                            Delete
+                          <AlertDialogAction
+                            onClick={() => handleDelete(file.name)}
+                            disabled={deleteMutation.isPending}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {deleteMutation.isPending ? "Deleting..." : "Delete"}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>

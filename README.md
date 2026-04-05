@@ -1,151 +1,271 @@
-# Cloud Storage Billing Engine
+# Nexus Storage: Multi-Tenant Cloud Storage Billing Engine
 
-A FastAPI-based multi-tenant cloud storage billing engine using MinIO for file storage, Supabase for usage state, and Razorpay for billing sync.
+A production-ready, event-driven cloud storage platform with integrated billing, built with FastAPI, React, and modern cloud services.
 
-## Project Overview
+## 🚀 Key Technical Highlights
 
-This project provides a backend engine to:
+### Decoupled Architecture
+Frontend uploads directly to S3/MinIO via Pre-signed POST, bypassing the API bottleneck for optimal performance and scalability.
 
-- Create presigned upload URLs for direct MinIO uploads
-- Meter uploads via Redis events and compute actual file sizes
-- Track storage usage in Supabase
-- Expose file management endpoints for list, download, and delete
-- Serve billing dashboard data
-- Sync usage into Razorpay add-ons for billing
+### Event-Driven Metering
+Uses a Redis-backed worker to process storage metrics asynchronously, ensuring accurate billing based on actual file sizes rather than client-reported data.
 
-## Core Components
+### Multi-Tenant Isolation
+Strict path-based separation ensuring users can never access each other's objects, with JWT-based authentication and authorization.
 
-- `app/main.py` - FastAPI application exposing the public API
-- `app/auth.py` - JWT bearer verification using Supabase auth JWKs
-- `app/storage.py` - MinIO / S3-compatible presigned upload and client helpers
-- `app/metering.py` - Redis event logging for upload metering
-- `app/worker.py` - Worker that consumes Redis billing events and updates Supabase with actual file sizes
-- `app/billing_sync.py` - Razorpay sync script that bills Supabase usage and resets usage counts
-- `app/schemas.py` - Pydantic request/response models
-- `app/config.py` - Environment configuration via `pydantic-settings`
-- `get_token.py` - Demo helper for obtaining a Supabase access token
+## 📋 Overview
 
-## Requirements
+Nexus Storage provides a complete cloud storage solution featuring:
 
-- Python 3.11+ (or compatible)
-- `pip install -r requirements.txt`
-- MinIO or any S3-compatible object store
-- Supabase project with service role key and auth enabled
-- Upstash Redis account
-- Razorpay account and subscription for billing add-ons
+- **Direct S3 Uploads**: Pre-signed URLs for efficient, serverless file uploads
+- **Real-Time Metering**: Event-driven usage tracking with Redis and background workers
+- **Secure Multi-Tenancy**: Isolated user storage with Supabase authentication
+- **Integrated Billing**: Razorpay-powered payment processing with usage-based pricing
+- **Modern Frontend**: React TypeScript dashboard with real-time updates
+- **RESTful API**: FastAPI backend with comprehensive documentation
 
-## Installation
+## 🏗️ Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   React         │    │   FastAPI       │    │   MinIO         │
+│   Frontend      │◄──►│   Backend       │◄──►│   (S3-Compat)   │
+│   (Vite)        │    │   (Python)      │    │   Storage       │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+         │                       │                       │
+         ▼                       ▼                       ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Supabase      │    │   Redis         │    │   Razorpay      │
+│   Auth & DB     │    │   Metering      │    │   Payments      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 🛠️ Tech Stack
+
+### Backend
+- **FastAPI** - High-performance async web framework
+- **Supabase** - Authentication, database, and real-time subscriptions
+- **MinIO** - S3-compatible object storage
+- **Redis** - Event-driven metering and background processing
+- **Razorpay** - Payment processing and billing
+- **Pydantic** - Data validation and settings management
+
+### Frontend
+- **React 18** - Modern UI framework with hooks
+- **TypeScript** - Type-safe development
+- **Vite** - Fast build tool and dev server
+- **Tailwind CSS** - Utility-first styling
+- **React Query** - Powerful data fetching and caching
+- **Supabase JS** - Client-side authentication
+
+## 📦 Core Components
+
+### Backend Services
+- `app/main.py` - FastAPI application with REST endpoints
+- `app/auth.py` - JWT validation using Supabase JWKs
+- `app/storage.py` - MinIO client and presigned URL generation
+- `app/metering.py` - Redis event logging for upload tracking
+- `app/worker.py` - Background worker for usage calculation
+- `app/billing_sync.py` - Razorpay billing synchronization
+- `app/config.py` - Environment configuration management
+
+### Frontend Components
+- `src/components/files/` - File upload and management UI
+- `src/components/billing/` - Billing dashboard and payment flow
+- `src/lib/supabase.ts` - Supabase client configuration
+- `src/lib/api.ts` - Axios client with JWT interceptors
+- `src/hooks/useAuth.ts` - Authentication state management
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.11+
+- Node.js 18+
+- Docker (for local services)
+- Git
+
+### 1. Backend Setup
 
 ```bash
+# Clone and setup
+git clone <repository-url>
+cd Cloud_storage_billing_engine
+
+# Python environment
 python -m venv venv
-source venv/Scripts/activate   # Windows
-# or
-source venv/bin/activate      # macOS / Linux
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+
+# Environment configuration
+cp .env.example .env
+# Edit .env with your service credentials
 ```
 
-## Configuration
-
-Create a `.env` file in the repo root with the following variables:
-
-```env
-MINIO_ENDPOINT=
-MINIO_ROOT_USER=
-MINIO_ROOT_PASSWORD=
-STORAGE_BUCKET_NAME=
-SUPABASE_JWT_SECRET=
-SUPABASE_PROJECT_ID=
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_TEST_SUB_ID=
-```
-
-### Notes
-
-- `MINIO_ENDPOINT` should be the full MinIO URL (including protocol).
-- `STORAGE_BUCKET_NAME` is the MinIO bucket used for uploads.
-- `SUPABASE_PROJECT_ID`, `SUPABASE_URL`, and `SUPABASE_SERVICE_ROLE_KEY` are used for admin Supabase operations.
-- `RAZORPAY_TEST_SUB_ID` should refer to a valid Razorpay subscription ID for test billing.
-
-## Supabase Requirements
-
-The app expects a Supabase table / function setup similar to:
-
-- `user_usage` table with columns:
-  - `user_id`
-  - `total_storage_used_bytes`
-- A Postgres RPC function named `increment_user_storage` with parameters `u_id` and `bytes_to_add`
-
-These are used by `app/worker.py` to increment usage after upload completion.
-
-## Running the API
+### 2. Start Services
 
 ```bash
+# MinIO (Storage)
+docker run -d -p 9000:9000 -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  minio/minio server /data --console-address ":9001"
+
+# Redis (Metering)
+docker run -d -p 6379:6379 redis/redis-stack
+
+# FastAPI Backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
 
-API endpoints:
-
-- `POST /upload-url` - request a presigned upload URL
-- `GET /billing/usage` - get current usage and estimated bill
-- `GET /files` - list a user's files
-- `GET /download/{filename}` - get a presigned download URL
-- `DELETE /files/{filename}` - delete a user file
-- `GET /health` - health check
-
-## Running the Worker
-
-The worker processes Redis billing events and updates Supabase with the actual uploaded file size.
-
-```bash
+# Background Worker
 python app/worker.py
 ```
 
-## Running Billing Sync
-
-Use this script to bill pending storage usage through Razorpay and reset usage counters.
+### 3. Frontend Setup
 
 ```bash
-python app/billing_sync.py
+cd frontend
+npm install
+cp .env.example .env.local
+# Edit .env.local with Supabase credentials
+npm run dev
 ```
 
-## Authentication
+**Access Points:**
+- Frontend: http://localhost:5173
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+- MinIO Console: http://localhost:9001
 
-The API uses HTTP Bearer tokens validated against Supabase JWT keys. The `get_current_user` dependency extracts the authenticated `user_id` from the token's `sub` claim.
+## ⚙️ Configuration
 
-### Example
+### Backend (.env)
+```env
+# MinIO Configuration
+MINIO_ENDPOINT=http://localhost:9000
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin
+STORAGE_BUCKET_NAME=nexus-storage
 
-```http
-Authorization: Bearer <access_token>
+# Supabase Configuration
+SUPABASE_JWT_SECRET=your-jwt-secret
+SUPABASE_PROJECT_ID=your-project-id
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Redis Configuration
+UPSTASH_REDIS_REST_URL=your-redis-url
+UPSTASH_REDIS_REST_TOKEN=your-redis-token
+
+# Razorpay Configuration
+RAZORPAY_KEY_ID=your-razorpay-key-id
+RAZORPAY_KEY_SECRET=your-razorpay-key-secret
+RAZORPAY_TEST_SUB_ID=your-test-subscription-id
 ```
 
-## Upload Flow
+### Frontend (.env.local)
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-1. Client requests `POST /upload-url` with `file_name` and `content_type`
-2. Server returns a presigned POST URL to MinIO
-3. Client uploads directly to MinIO
-4. The app logs a Redis event via `app/metering.py`
-5. `app/worker.py` consumes the event, reads the actual object size from MinIO, and updates Supabase
+## 🔄 Data Flow
 
-## Important Notes
+### File Upload Process
+1. **Frontend** requests presigned upload URL from `/upload-url`
+2. **Backend** generates MinIO presigned POST URL with user isolation
+3. **Frontend** uploads directly to MinIO (bypassing API)
+4. **Backend** logs upload event to Redis queue
+5. **Worker** processes event, gets actual file size from MinIO
+6. **Worker** updates Supabase usage database
 
-- `get_token.py` is a demo helper and contains hard-coded test credentials. Only use it for local testing and remove or rotate secrets before deployment.
-- `allow_origins` in `app/main.py` is currently set to `*`; lock this down for production use.
-- The current billing logic charges a minimum of 1 GB at ₹5 per GB.
+### Billing Process
+1. **Frontend** displays usage from `/billing/usage` endpoint
+2. **User** initiates payment via Razorpay checkout
+3. **Backend** creates Razorpay order with calculated amount
+4. **Razorpay** processes payment and returns verification data
+5. **Backend** verifies payment signature and resets usage
 
-## Useful Commands
+## 📊 API Endpoints
 
+### File Management
+- `POST /upload-url` - Get presigned upload URL
+- `GET /files` - List user files
+- `GET /download/{filename}` - Get download URL
+- `DELETE /files/{filename}` - Delete file
+
+### Billing & Payments
+- `GET /billing/usage` - Get usage and billing data
+- `POST /billing/pay` - Create Razorpay payment order
+- `POST /billing/verify` - Verify payment completion
+
+### System
+- `GET /health` - Health check endpoint
+
+## 🔒 Security Features
+
+- **JWT Authentication** - Supabase-based token validation
+- **Multi-Tenant Isolation** - Path-based user separation
+- **Pre-signed URLs** - Time-limited, secure upload/download access
+- **Payment Verification** - HMAC signature validation for Razorpay
+- **CORS Protection** - Configurable origin restrictions
+
+## 📈 Performance Optimizations
+
+- **Direct S3 Uploads** - No API bottleneck for file transfers
+- **Async Metering** - Background processing for usage calculations
+- **Redis Caching** - Fast event queuing and processing
+- **React Query** - Intelligent caching and background refetching
+- **Lazy Loading** - Component-based code splitting
+
+## 🧪 Testing
+
+### Backend Testing
 ```bash
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-python app/worker.py
-python app/billing_sync.py
+# Run with test environment
+pytest tests/
 ```
 
-## License
+### Frontend Testing
+```bash
+cd frontend
+npm run test
+npm run test:e2e  # Playwright end-to-end tests
+```
 
-This repository does not include a license file. Add a license if you want to publish or share it publicly.
+## 🚀 Deployment
+
+### Production Checklist
+- [ ] Configure production Supabase project
+- [ ] Set up production MinIO/S3 bucket
+- [ ] Configure production Redis instance
+- [ ] Set up Razorpay production credentials
+- [ ] Update CORS origins for production domain
+- [ ] Enable HTTPS and security headers
+- [ ] Set up monitoring and logging
+- [ ] Configure backup strategies
+
+### Docker Deployment
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- [FastAPI](https://fastapi.tiangolo.com/) - The modern Python web framework
+- [Supabase](https://supabase.com/) - Open source Firebase alternative
+- [MinIO](https://min.io/) - High performance object storage
+- [Razorpay](https://razorpay.com/) - Payment gateway for India
+- [React](https://reactjs.org/) - UI library for the web

@@ -36,9 +36,7 @@ export default function Login() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm glass animate-fade-in-up">
         <CardHeader className="items-center text-center">
-          <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-primary glow">
-            <Cloud className="h-6 w-6 text-primary-foreground" />
-          </div>
+          <Cloud className="mb-2 h-8 w-8 text-primary" />
           <CardTitle className="text-xl">Nexus</CardTitle>
           <CardDescription>{isSignUp ? "Create your account" : "Sign in to your account"}</CardDescription>
         </CardHeader>

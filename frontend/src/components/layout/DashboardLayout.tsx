@@ -32,9 +32,7 @@ export default function DashboardLayout({ children, activeTab, onTabChange }: Da
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex h-16 items-center gap-3 border-b border-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Cloud className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <Cloud className="h-6 w-6 text-primary" />
           <span className="text-lg font-bold tracking-tight text-foreground">Nexus</span>
           <Button variant="ghost" size="icon" className="ml-auto lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X className="h-4 w-4" />

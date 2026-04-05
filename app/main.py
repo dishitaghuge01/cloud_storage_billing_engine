@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+import razorpay
+from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from app.auth import get_current_user
@@ -8,27 +9,25 @@ from app.metering import log_usage_event
 from app.config import settings
 from supabase import create_client, Client
 
-app = FastAPI(title="Multi-Tenant Cloud Storage Engine", version="1.0.0")
+app = FastAPI(title="Nexus - Multi-Tenant Cloud Storage Engine", version="1.0.0")
 
-# --- CORS SETTINGS (Required for Lovable/Frontend) ---
+# --- CORS SETTINGS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize Supabase Client for usage queries
+# Initialize Clients
 supabase: Client = create_client(settings.supabase_url, settings.supabase_service_role_key)
+razorpay_client = razorpay.Client(auth=(settings.razorpay_key_id, settings.razorpay_key_secret))
 
 # --- PHASE 1 & 2: UPLOAD & METERING ---
 
 @app.post("/upload-url", response_model=PresignedPostResponse)
-async def get_upload_url(
-    request: PresignedPostRequest, 
-    user_id: str = Depends(get_current_user)
-):
+async def get_upload_url(request: PresignedPostRequest, user_id: str = Depends(get_current_user)):
     try:
         url_data = generate_presigned_post_url(
             user_id=user_id,
@@ -40,37 +39,90 @@ async def get_upload_url(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
 
-# --- PHASE 4: BILLING DASHBOARD ---
+# --- PHASE 4: BILLING & PAYMENTS ---
 
 @app.get("/billing/usage")
 async def get_user_billing(user_id: str = Depends(get_current_user)):
-    """
-    Returns the current pending storage bill and usage for the dashboard.
-    """
     try:
-        # Fetch data from the Supabase user_usage table
         result = supabase.table("user_usage").select("total_storage_used_bytes").eq("user_id", user_id).execute()
-        
-        # If no record exists, they have 0 usage
         bytes_used = result.data[0]['total_storage_used_bytes'] if result.data else 0
-        
-        # Calculate stats
         gb_used = bytes_used / (1024**3)
-        # Assuming ₹5 per GB logic (matches your billing_sync.py)
+        
+        # Consistent pricing: ₹5 per GB, minimum ₹1 if any data exists
         estimated_inr = round(max(1 if bytes_used > 0 else 0, gb_used) * 5, 2) 
         
         return {
             "user_id": user_id,
-            "total_bytes": bytes_used,
             "gb_formatted": f"{gb_used:.4f} GB",
             "estimated_bill_inr": estimated_inr,
             "currency": "INR"
         }
     except Exception as e:
-        print(f"Billing fetch error: {e}")
         raise HTTPException(status_code=500, detail="Could not retrieve billing data")
 
-# --- PHASE 5: ACCESS & MANAGEMENT (VAULT OPERATIONS) ---
+@app.post("/billing/pay")
+async def create_payment_order(user_id: str = Depends(get_current_user)):
+    """
+    Step 1: Create a real Razorpay Order based on Supabase usage data.
+    """
+    try:
+        # 1. Get actual usage from DB
+        result = supabase.table("user_usage").select("total_storage_used_bytes").eq("user_id", user_id).execute()
+        bytes_used = result.data[0]['total_storage_used_bytes'] if result.data else 0
+        
+        if bytes_used <= 0:
+            raise HTTPException(status_code=400, detail="No pending balance to pay.")
+
+        # 2. Calculate amount in Paise (Razorpay requirement: ₹1 = 100 paise)
+        gb_used = bytes_used / (1024**3)
+        amount_inr = max(1, gb_used) * 5
+        amount_paise = int(amount_inr * 100)
+
+        # 3. Create Razorpay Order
+        order_params = {
+            'amount': amount_paise,
+            'currency': 'INR',
+            'receipt': f"receipt_user_{user_id[:8]}",
+            'notes': {
+                'user_id': user_id,
+                'type': 'storage_billing'
+            }
+        }
+        order = razorpay_client.order.create(data=order_params)
+        
+        return {
+            "order_id": order['id'],
+            "amount": amount_paise,
+            "currency": "INR",
+            "key": settings.razorpay_key_id  # Frontend needs this to open the modal
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Payment initialization failed: {str(e)}")
+
+@app.post("/billing/verify")
+async def verify_payment(
+    user_id: str = Depends(get_current_user),
+    payload: dict = Body(...)
+):
+    """
+    Step 2: Verify the signature sent by Razorpay to ensure payment was legitimate.
+    """
+    try:
+        # Verify the signature
+        razorpay_client.utility.verify_payment_signature({
+            'razorpay_order_id': payload.get('razorpay_order_id'),
+            'razorpay_payment_id': payload.get('razorpay_payment_id'),
+            'razorpay_signature': payload.get('razorpay_signature')
+        })
+
+        # Logic: Reset the user's usage in Supabase after successful payment
+        supabase.table("user_usage").update({"total_storage_used_bytes": 0}).eq("user_id", user_id).execute()
+        
+        return {"status": "success", "message": "Payment verified and balance reset."}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid payment signature. Fraud detected.")
+
+# --- PHASE 5: ACCESS & MANAGEMENT ---
 
 @app.get("/files")
 async def list_files(user_id: str = Depends(get_current_user)):
@@ -90,7 +142,7 @@ async def list_files(user_id: str = Depends(get_current_user)):
                     })
         return {"user_id": user_id, "files": file_list}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Could not list files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Listing failed: {str(e)}")
 
 @app.get("/download/{filename}")
 async def get_download_link(filename: str, user_id: str = Depends(get_current_user)):
