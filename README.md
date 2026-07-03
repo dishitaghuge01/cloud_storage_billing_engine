@@ -2,7 +2,7 @@
 
 A production-ready, event-driven cloud storage platform with integrated billing, built with FastAPI, React, and modern cloud services.
 
-## 🚀 Key Technical Highlights
+## Key Technical Highlights
 
 ### Decoupled Architecture
 Frontend uploads directly to S3/MinIO via Pre-signed POST, bypassing the API bottleneck for optimal performance and scalability.
@@ -13,7 +13,7 @@ Uses a Redis-backed worker to process storage metrics asynchronously, ensuring a
 ### Multi-Tenant Isolation
 Strict path-based separation ensuring users can never access each other's objects, with JWT-based authentication and authorization.
 
-## 📋 Overview
+## Overview
 
 Nexus Storage provides a complete cloud storage solution featuring:
 
@@ -24,7 +24,7 @@ Nexus Storage provides a complete cloud storage solution featuring:
 - **Modern Frontend**: React TypeScript dashboard with real-time updates
 - **RESTful API**: FastAPI backend with comprehensive documentation
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -40,7 +40,7 @@ Nexus Storage provides a complete cloud storage solution featuring:
 └─────────────────┘    └─────────────────┘    └─────────────────┘
 ```
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 ### Backend
 - **FastAPI** - High-performance async web framework
@@ -58,7 +58,7 @@ Nexus Storage provides a complete cloud storage solution featuring:
 - **React Query** - Powerful data fetching and caching
 - **Supabase JS** - Client-side authentication
 
-## 📦 Core Components
+## Core Components
 
 ### Backend Services
 - `app/main.py` - FastAPI application with REST endpoints
@@ -76,7 +76,7 @@ Nexus Storage provides a complete cloud storage solution featuring:
 - `src/lib/api.ts` - Axios client with JWT interceptors
 - `src/hooks/useAuth.ts` - Authentication state management
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Python 3.11+
@@ -136,7 +136,7 @@ npm run dev
 - API Docs: http://localhost:8000/docs
 - MinIO Console: http://localhost:9001
 
-## ⚙️ Configuration
+## Configuration
 
 ### Backend (.env)
 ```env
@@ -168,7 +168,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-## 🔄 Data Flow
+## Data Flow
 
 ### File Upload Process
 1. **Frontend** requests presigned upload URL from `/upload-url`
@@ -201,7 +201,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ### System
 - `GET /health` - Health check endpoint
 
-## 🔒 Security Features
+## Security Features
 
 - **JWT Authentication** - Supabase-based token validation
 - **Multi-Tenant Isolation** - Path-based user separation
@@ -217,7 +217,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 - **React Query** - Intelligent caching and background refetching
 - **Lazy Loading** - Component-based code splitting
 
-## 🧪 Testing
+## Testing
 
 ### Backend Testing
 ```bash
@@ -232,7 +232,7 @@ npm run test
 npm run test:e2e  # Playwright end-to-end tests
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Production Checklist
 - [ ] Configure production Supabase project
@@ -250,7 +250,7 @@ npm run test:e2e  # Playwright end-to-end tests
 docker-compose up -d
 ```
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -258,11 +258,11 @@ docker-compose up -d
 4. Add tests for new functionality
 5. Submit a pull request
 
-## 📄 License
+## icense
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - [FastAPI](https://fastapi.tiangolo.com/) - The modern Python web framework
 - [Supabase](https://supabase.com/) - Open source Firebase alternative
