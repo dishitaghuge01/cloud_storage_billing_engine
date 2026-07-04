@@ -1,4 +1,5 @@
 import razorpay
+import threading
 from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
@@ -7,6 +8,7 @@ from app.storage import get_minio_client, generate_presigned_put_url
 from app.schemas import PresignedPostRequest, PresignedPostResponse
 from app.metering import log_usage_event
 from app.config import settings
+from app.worker import start_worker
 from supabase import create_client, Client
 
 app = FastAPI(title="Nexus - Multi-Tenant Cloud Storage Engine", version="1.0.0")
@@ -23,6 +25,18 @@ app.add_middleware(
 # Initialize Clients
 supabase: Client = create_client(settings.supabase_url, settings.supabase_service_role_key)
 razorpay_client = razorpay.Client(auth=(settings.razorpay_key_id, settings.razorpay_key_secret))
+
+# --- BACKGROUND WORKER ---
+# Runs the billing/metering worker loop inside this same process, as a
+# daemon thread, so it rides along with the free-tier Web Service instead
+# of needing a separate (paid) Render Background Worker.
+@app.on_event("startup")
+def launch_worker_thread():
+    worker_thread = threading.Thread(target=start_worker, daemon=True)
+    worker_thread.start()
+    print("Billing worker thread started alongside web service.")
+
+# --- PHASE 1 & 2: UPLOAD & METERING ---
 
 # --- PHASE 1 & 2: UPLOAD & METERING ---
 
