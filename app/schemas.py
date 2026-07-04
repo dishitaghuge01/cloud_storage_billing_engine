@@ -9,4 +9,4 @@ class PresignedPostRequest(BaseModel):
 
 class PresignedPostResponse(BaseModel):
     url: str
-    fields: dict
+    content_type:str

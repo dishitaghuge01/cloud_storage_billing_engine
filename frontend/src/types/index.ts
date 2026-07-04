@@ -13,7 +13,7 @@ export interface BillingUsage {
 
 export interface PresignedPostResponse {
   url: string;
-  fields: Record<string, string>;
+  content_type: string
 }
 
 export interface DownloadResponse {

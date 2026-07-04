@@ -17,27 +17,21 @@ export default function FileUpload() {
       const toastId = toast.loading(`Uploading ${file.name}...`);
 
       try {
-        // STEP 1: Request presigned POST URL from backend
+        // STEP 1: Request presigned PUT URL from backend
+        // (R2 doesn't support presigned POST/multipart form uploads,
+        // only presigned PUT - https://developers.cloudflare.com/r2/api/s3/presigned-urls/)
         const { data: presignedData } = await api.post<PresignedPostResponse>("/upload-url", {
           file_name: file.name,
           content_type: file.type,
         });
 
-        // STEP 2: Create FormData instance
-        const formData = new FormData();
-
-        // STEP 3: Iterate through fields and append to FormData
-        Object.entries(presignedData.fields).forEach(([key, value]) => {
-          formData.append(key, value as string);
-        });
-
-        // STEP 4: Append the actual file LAST with 'file' key
-        formData.append("file", file);
-
-        // STEP 5: Send POST request to MinIO endpoint
+        // STEP 2: PUT the raw file directly to the presigned URL
         const uploadResponse = await fetch(presignedData.url, {
-          method: "POST",
-          body: formData,
+          method: "PUT",
+          headers: {
+            "Content-Type": presignedData.content_type,
+          },
+          body: file,
         });
 
         if (!uploadResponse.ok) {

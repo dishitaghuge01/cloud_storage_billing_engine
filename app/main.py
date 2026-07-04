@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from app.auth import get_current_user
-from app.storage import get_minio_client, generate_presigned_post_url
+from app.storage import get_minio_client, generate_presigned_put_url
 from app.schemas import PresignedPostRequest, PresignedPostResponse
 from app.metering import log_usage_event
 from app.config import settings
@@ -29,7 +29,7 @@ razorpay_client = razorpay.Client(auth=(settings.razorpay_key_id, settings.razor
 @app.post("/upload-url", response_model=PresignedPostResponse)
 async def get_upload_url(request: PresignedPostRequest, user_id: str = Depends(get_current_user)):
     try:
-        url_data = generate_presigned_post_url(
+        url_data = generate_presigned_put_url(
             user_id=user_id,
             file_name=request.file_name,
             content_type=request.content_type
